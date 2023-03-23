@@ -1,3 +1,5 @@
+//Don't just copy the codes... Please learn the logic...
+
 #include <xc.h>
 #pragma config WDTE = OFF
 void main(void) 
