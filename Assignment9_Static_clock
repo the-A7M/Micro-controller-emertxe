@@ -1,0 +1,132 @@
+//Don't just copy...Study the logic
+//Implement a static clock on SSD using internal timer
+//As soon as the board is powered on or reset, the clock should start at 12.00.
+
+
+#include <xc.h>
+
+#pragma config WDTE = OFF                       
+
+static unsigned char ssd[MAX_SSD_CNT];                                  //array for displaying values in ssd
+static unsigned char digit[] = {ZERO, ONE,TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT,NINE, BLANK , BLANK}; //values to be displayed
+
+
+#define MAX_SSD_CNT                 4
+
+#define SSD_DATA_PORT_DDR           TRISD
+#define SSD_CONTROL_PORT_DDR        TRISA
+
+#define SSD_DATA_PORT               PORTD       //alias for portd
+#define SSD_CONTROL_PORT            PORTA       //alias for porta
+
+/* For Common Cathode Display */                                       //you should note that hexa values for picsimlab simulator and the actual board is different
+#define ZERO   0x3F                                                    //these hex values support the picsimlab simulator
+#define ONE    0x06                                                    //if u are using the actual board find the corresponding values
+#define TWO    0x5B
+#define THREE  0x4F
+#define FOUR   0x66
+#define FIVE   0x6D
+#define SIX    0x7D
+#define SEVEN  0x07
+#define EIGHT  0x7F
+#define NINE   0x6F
+#define BLANK  0x08
+
+
+void init_ssd(void);                                                    //function declarations
+void init_timer();
+void display(unsigned char data[]);
+
+
+
+
+
+static void init_config(void)                                           //function for initializing pins of ssd and setting timer1 
+{
+    init_ssd();
+    init_timer();
+}
+
+
+void init_ssd(void)                                                     //function to initialize pins to seven segment display
+{
+    /* Seeting the SSD data line as Output */
+    SSD_DATA_PORT_DDR = 0x00;
+    
+    /* Setting SSD Control Line as Output (RA5 - RA2) */
+    SSD_CONTROL_PORT_DDR = SSD_CONTROL_PORT_DDR & 0x03;
+    
+    SSD_CONTROL_PORT = SSD_CONTROL_PORT & 0x03;
+}
+
+void init_timer()                                                       //setting timer1 as internal timer
+{
+    GIE=1;
+    PEIE=1;
+    TMR1IF=0;
+    TMR1IE=1;
+    TMR1=3036;
+    //T1CKPS1=0;
+    //T1CKPS0=0;
+    //T1OSCEN=0;
+    //TMR1CS=0;
+    TMR1ON=1;
+    
+}
+
+
+void display(unsigned char data[])                                      //function to display the numbers on ssd
+{
+    unsigned char digit;
+    for (digit = 0; digit < MAX_SSD_CNT; digit++)
+    {
+        SSD_DATA_PORT = data[digit];
+        SSD_CONTROL_PORT = (SSD_CONTROL_PORT & 0x03) | (0x04 << digit);
+        
+       for (unsigned long int wait = 400; wait--; );
+    }
+}
+
+void __interrupt() isr()                                                //interrupt isr function
+{
+    
+    static int min=0,hour=12;                                            //initializing variables
+    static unsigned int count=0;
+    if(TMR1IF)
+    {
+        TMR1=TMR1+3038;
+        TMR1IF=0;
+        
+        ssd[3] = digit[min % 10];                                       //setting the ssd array with required values
+        ssd[2] = digit[min / 10];
+        if(count % 80 <= 40)                                            //if condition to blink pointer every half a second
+            ssd[1] = digit[hour % 10];
+        else
+            ssd[1] = digit[hour % 10] | 0x80;
+        ssd[0] = digit[hour / 10];
+            
+        if(count++ == 4800) 
+        {
+            if(++min == 59)                                             //increment min till it reaches 59 and reset to 0
+            {
+                if(++hour == 23)                                        //increment hour till it reaches 23 and reset to 0
+                {
+                    hour=0;
+                }
+                min=0;
+            }
+            count=0;        
+        }
+    }
+}
+
+void main(void)                                                         //main function
+{
+        
+    
+    init_config();                                                      //calling init_config function
+    while(1)
+    {
+       display(ssd);                                                    //function for displaying values on ssd
+    }
+}
