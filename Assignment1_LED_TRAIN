@@ -1,31 +1,33 @@
 //Don't just copy the codes... Please learn the logic...
 
+//Consider 8 LEDs from the Board, these LEDs has to glow one by one as if a train bogie coming out of a tunnel every secondfrom Left to Right as soon as the board is powered on or reset
+
 #include <xc.h>
 #pragma config WDTE = OFF
 void main(void) 
 {
-    TRISB=0x00;
-    PORTB=0x00;
+    TRISB=0x00;                                     //Enabling all 8 portb pins as output pins
+    PORTB=0x00;                                     //initally all LEDs in off state
     
     int count = 0;
-    unsigned long int wait =0;
+    unsigned long int wait =0;                      //initializing variables
     while(1)
     {
-        if(wait++ == 100000)
+        if(wait++ == 100000)                        //delay
         {
-            if(count>=0 && count<=7)
+            if(count>=0 && count<=7)                //logic for train entering from B0 to B7
             {
                 PORTB = PORTB << 1|1;
             }
-            else if(count>=8 && count<=15)
+            else if(count>=8 && count<=15)          //logic for train leaving from B0 to B7
             {
                 PORTB =PORTB << 1;
             }
-            else if(count>=16 && count<=23)
+            else if(count>=16 && count<=23)         //logic for train entering from B7 to B0
             {
                 PORTB = PORTB >> 1 | 0x80;
             }
-            else if(count>=24 && count<=31)
+            else if(count>=24 && count<=31)         //logic for train leaving from B7 to B0
             {
                 PORTB = PORTB >> 1;
             }
