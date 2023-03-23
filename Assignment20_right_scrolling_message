@@ -1,0 +1,126 @@
+//Don't just copy the codes... Study the logic
+//Implement a right scrolling message marquee
+//As soon as the board is powered up or reset, a static message (hardcoded) should start scrolling from left to right CLCD.
+
+
+#include <xc.h>
+#pragma config WDTE = OFF  
+
+
+#define _XTAL_FREQ                  20000000
+
+#define CLCD_DATA_PORT_DDR          TRISD
+#define CLCD_RS_DDR                 TRISE2
+#define CLCD_EN_DDR                 TRISE1
+
+#define CLCD_DATA_PORT              PORTD
+#define CLCD_RS                     RE2
+#define CLCD_EN                     RE1
+
+#define INST_MODE                   0
+#define DATA_MODE                   1
+
+#define HI                          1
+#define LOW                         0
+
+#define LINE1(x)                    (0x80 + x)
+#define LINE2(x)                    (0xC0 + x)
+
+#define EIGHT_BIT_MODE              0x33
+#define TWO_LINES_5x8_8_BIT_MODE    0x38
+#define CLEAR_DISP_SCREEN           0x01
+#define DISP_ON_AND_CURSOR_OFF      0x0C
+
+void init_clcd(void);
+void clcd_putch(const char data, unsigned char addr);
+void clcd_print(char *str, unsigned char addr);
+void scroll(char *str,unsigned char size);
+
+static void clcd_write(unsigned char byte, unsigned char mode)
+{
+    CLCD_RS = mode;
+    CLCD_DATA_PORT = byte;
+    
+    CLCD_EN = HI;
+    __delay_us(100);
+    CLCD_EN = LOW;
+    
+    __delay_us(4100);
+}
+
+static void init_display_controller(void)
+{
+    /* Startup Time for the CLCD controller */
+    __delay_ms(30);
+    
+    /* The CLCD Startup Sequence */
+    clcd_write(EIGHT_BIT_MODE, INST_MODE);
+    __delay_us(4100);
+    clcd_write(EIGHT_BIT_MODE, INST_MODE);
+    __delay_us(100);
+    clcd_write(EIGHT_BIT_MODE, INST_MODE);
+    __delay_us(1); 
+    
+    clcd_write(TWO_LINES_5x8_8_BIT_MODE, INST_MODE);
+    __delay_us(100);
+    clcd_write(CLEAR_DISP_SCREEN, INST_MODE);
+    __delay_us(500);
+    clcd_write(DISP_ON_AND_CURSOR_OFF, INST_MODE);
+    __delay_us(100);
+}
+
+void init_clcd(void)
+{
+    /* Setting the CLCD Data Port as Output */
+    CLCD_DATA_PORT_DDR = 0x00;
+    
+    /* Setting the RS and EN lines as Output */
+    CLCD_RS_DDR = 0;
+    CLCD_EN_DDR = 0;
+    
+    init_display_controller();
+}
+
+void clcd_putch(const char data, unsigned char addr)                  //function to display character on clcd
+{
+    clcd_write(addr, INST_MODE);                                      //call the clcd_write function with addr and INST_MODE as parameter
+    clcd_write(data, DATA_MODE);                                      //call the clc_write function with data and DATA_MODE as parameter
+}
+
+void clcd_print(char *str, unsigned char addr)                        //function to display string on clcd
+{
+    clcd_write(addr, INST_MODE);                                       //call the clcd_write function with addr and INST_MODE as parameter
+       while (*str != '\0')                                           //run the loop till string reaches NULL
+       {
+          clcd_write(*str, DATA_MODE);                                //call the clc_write function with data and DATA_MODE as parameter
+          str++;
+       }
+}
+
+static void init_config(void)        //init_config function definition
+{
+    init_clcd();                     //call init_clcd function
+}
+
+void main(void) 
+{
+    init_config();                                
+    unsigned char wait=0,i;                           //declaring variables
+    unsigned char str[16]="Amit Prasad     ";         //declaring character array of size 16. make sure there are 16 characters including spaces
+    while (1)                                      
+    {
+        clcd_print("Name :", LINE1(0));               //call clcd_print function for LINE1
+        clcd_print(str, LINE2(0));                    //call clcd_print function for LINE2
+        if(wait++ == 3)                               //delay condition
+        {
+            unsigned char temp = str[15];              
+            for(i=15;i>0;i--)                          
+            {
+                str[i]=str[i-1];                      //right shifting characters 
+            }
+            str[0]=temp;                              //initializing last element to first 
+            wait=0;                                   
+        }
+    }
+    return;
+}
